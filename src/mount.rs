@@ -1,6 +1,8 @@
+#![allow(unused)]
 use std::io::{Result, Error};
+use std::collections::linked_list::LinkedList;
 
-struct MountInfo {
+pub struct MountInfo {
     source: &'static str,
     target: &'static str,
     file_system_type: &'static str,
@@ -9,30 +11,28 @@ struct MountInfo {
 }
 
 impl MountInfo {
-    fn new(source: &'static str, target: &'static str, file_system_type: &'static str, mount_flags: u64, _data: &'static str) -> MountInfo {
+    pub fn new(source: &'static str, target: &'static str, file_system_type: &'static str, mount_flags: u64, _data: &'static str) -> MountInfo {
         MountInfo { source, target, file_system_type, mount_flags, _data }
     }
 }
 
-struct KernelFilesystem {
-    dev: MountInfo,
-    sys: MountInfo,
-    var: MountInfo,
-    proc: MountInfo,
+pub struct KernelFilesystem {
+    fs_vect: Vec<MountInfo>,
 }
 
-fn mount_kernel_filesystem() {
-    let kfs = KernelFilesystem {
-        dev: MountInfo::new("/dev/sda1", "/mnt", "ext4", libc::MS_RDONLY, ""),
-        sys: MountInfo::new("/dev/sda1", "/mnt", "ext4", libc::MS_RDONLY, ""),
-        var: MountInfo::new("/dev/sda1", "/mnt", "ext4", libc::MS_RDONLY, ""),
-        proc: MountInfo::new("/dev/sda1", "/mnt", "ext4", libc::MS_RDONLY, ""),
-    };
+impl KernelFilesystem {
+    pub fn new() -> KernelFilesystem {
+        KernelFilesystem {
+            fs_vect: Vec::new(),
+        }
+    }
 
-    mount(kfs.dev);
-    mount(kfs.sys);
-    mount(kfs.var);
-    mount(kfs.proc);
+    pub fn add(&mut self, mi: MountInfo) {
+        self.fs_vect.push(mi);
+    }
+
+    pub fn mount_kernel_filesystem(&mut self) {
+    }
 }
 
 fn mount(mount: MountInfo) -> Result<()> {
