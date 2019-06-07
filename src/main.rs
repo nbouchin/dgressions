@@ -1,12 +1,14 @@
 mod mount;
+use libc::*;
 
 fn main() {
     let mut kfs: mount::KernelFilesystem = mount::KernelFilesystem::new();
 
-    kfs.add(mount::MountInfo::new("/dev/sda1", "/mnt/mnt_dest1", "iso9660", libc::MS_RDONLY, ""));// mnt
-    kfs.add(mount::MountInfo::new("/dev/sda1", "/mnt/mnt_dest2", "iso9660", libc::MS_RDONLY, ""));// sys
-    kfs.add(mount::MountInfo::new("/dev/sda1", "/mnt/mnt_dest3", "iso9660", libc::MS_RDONLY, ""));// var
-    kfs.add(mount::MountInfo::new("/dev/sda1", "/mnt/mnt_dest4", "iso9660", libc::MS_RDONLY, ""));// proc
+    kfs.add(mount::MountInfo::new("udev", "/mnt/dev", "devtmpfs", MS_NOSUID|MS_RELATIME, ""));
+    kfs.add(mount::MountInfo::new("sysfs", "/mnt/sys", "sysfs", MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME, ""));
+//    kfs.add(mount::MountInfo::new("var", "/var", "iso9660", 0, ""));// find info on var
+    kfs.add(mount::MountInfo::new("proc", "/mnt/proc", "proc", MS_NOSUID|MS_NODEV|MS_NOEXEC|MS_RELATIME, ""));
+    kfs.add(mount::MountInfo::new("/mnt/dev/vda1", "/mnt/root", "ext4", MS_RDONLY, ""));
 
-    //kfs.mount_kernel_filesystem();
+    kfs.mount_kernel_filesystem();
 }
