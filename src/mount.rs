@@ -32,11 +32,13 @@ impl KernelFilesystem {
     }
 
     pub fn mount_kernel_filesystem(&mut self) {
+        for i in self.fs_vect.iter() {
+            mount(i);
+        }
     }
 }
 
-fn mount(mount: MountInfo) -> Result<()> {
-
+fn mount(mount: &MountInfo) -> Result<()> {
     let ret;
 
     unsafe {
