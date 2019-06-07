@@ -33,7 +33,9 @@ impl KernelFilesystem {
 
     pub fn mount_kernel_filesystem(&mut self) {
         for i in self.fs_vect.iter() {
-            mount(i);
+           if let Err(e) = mount(i) {
+               println!("{}", e);
+           }
         }
     }
 }
