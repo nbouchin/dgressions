@@ -71,10 +71,29 @@ fn execv(path: &str, argv: &[&str]) {
 fn main() {
     use std::process::Command;
 
-    match Command::new("/sbin/udevd")
-        .arg("--monitor")
-        .output() {
-            Ok(output) => println!("{:?}", output),
-            Err(e) => println!("{}", e),
-        }
+    Command::new("/sbin/udevd")
+        .arg("--daemon")
+        .output()
+        .expect("failed udevd");
+
+    Command::new("/sbin/udevadm")
+        .arg("trigger")
+        .arg("--action=add")
+        .arg("--type=subsystems")
+        .output()
+        .expect("failed udevadm");
+
+    Command::new("/sbin/udevadm")
+        .arg("trigger")
+        .arg("--action=add")
+        .arg("--type=devices")
+        .output()
+        .expect("failed udevadm");
+
+    Command::new("/sbin/udevadm")
+        .arg("trigger")
+        .arg("--action=change")
+        .arg("--type=devices")
+        .output()
+        .expect("failed udevadm");
 }
