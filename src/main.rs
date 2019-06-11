@@ -35,6 +35,10 @@ fn main() {
 	Command::new("/bin/bash")
 		.spawn()
 		.expect("bash command failed to start");
-	loop {
-	}
+    Command::new("/usr/sbin/agetty")
+        .args("/dev/tty10")
+        .spawn()
+        .expect("getty failed");
+    loop {
+    }
 }
