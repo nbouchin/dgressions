@@ -1,8 +1,8 @@
 use std::io::{Result, Error};
 use std::ffi::{CString};
 use std::ptr::{null_mut};
-use libc::{MS_RDONLY};
 
+#[allow(unused)]
 fn stat(pathname: &str, buf: *mut libc::stat) -> Result<()> {
     let ret;
 
@@ -15,6 +15,7 @@ fn stat(pathname: &str, buf: *mut libc::stat) -> Result<()> {
     return Ok(());
 }
 
+#[allow(unused)]
 fn mount(source: &str, target: &str, file_system_type: &str, mount_flags: u64,
          _data: &str) -> Result<()> {
 
@@ -34,19 +35,19 @@ fn mount(source: &str, target: &str, file_system_type: &str, mount_flags: u64,
     return Ok(());
 }
 
-const NR_init_module: i64 = 105;
-const NR_finit_module: i64 = 273;
+const NR_INIT_MODULE: i64 = 105;
+const NR_FINIT_MODULE: i64 = 273;
 
 #[allow(unused)]
 fn init_module(module_image: *mut libc::c_void, len: libc::c_ulong,
                param_values: *const libc::c_char) -> i64 {
-    unsafe { libc::syscall(NR_init_module, module_image, len, param_values) }
+    unsafe { libc::syscall(NR_INIT_MODULE, module_image, len, param_values) }
 }
 
 #[allow(unused)]
 fn finit_module(fd: i32, param_values: *const libc::c_char,
                 flags: i32) -> i64 {
-    unsafe { libc::syscall(NR_finit_module, fd, param_values, flags) }
+    unsafe { libc::syscall(NR_FINIT_MODULE, fd, param_values, flags) }
 }
 
 #[allow(unused)]
@@ -68,9 +69,14 @@ fn execv(path: &str, argv: &[&str]) {
     }
 }
 
-fn main() {
+fn syslog(loglevel: i32, args: &[&str]) {
+    unsafe { libc::syslog(loglevel, to_exec_array(args).as_ptr() as *const i8); };
+}
+
+fn start_udev() {
     use std::process::Command;
 
+    syslog(libc::LOG_CONS, &["Starting udevd..."]);
     Command::new("/sbin/udevd")
         .arg("--daemon")
         .output()
@@ -96,4 +102,8 @@ fn main() {
         .arg("--type=devices")
         .output()
         .expect("failed udevadm");
+}
+
+fn main() {
+    start_udev();
 }
