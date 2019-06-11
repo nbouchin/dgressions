@@ -1,7 +1,8 @@
 [package]
 name = "dgressions"
 version = "0.1.0"
-authors = ["nbouchin"]
+authors = ["nbouchin", "oyagci"]
 edition = "2018"
 
 [dependencies]
+libc = "0.2.58"
