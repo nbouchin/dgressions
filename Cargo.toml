@@ -1,7 +1,12 @@
 [package]
-name = "dgressions"
+name = "task_master"
 version = "0.1.0"
-authors = ["nbouchin"]
+authors = ["Nicolas Bouchinet <nicolas.bouchinet@protonmail.com>"]
 edition = "2018"
 
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
 [dependencies]
+toml = "0.5.6"
+serde = "1.0"
+serde_derive = "1.0.106"
