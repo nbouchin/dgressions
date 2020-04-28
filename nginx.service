@@ -1,4 +1,4 @@
-cmd = "/bin/env"
+cmd = "/usr/bin/nvim"
 args = [
 ]
 numprocs = 1
