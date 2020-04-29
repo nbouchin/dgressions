@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::env;
 use std::fs::File;
 use std::io::prelude::*;
+use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::path::Path;
 use std::process::{Child, Command};
 use std::{thread, time};
@@ -71,18 +72,70 @@ impl Unit {
     }
 
     pub fn start(&mut self) {
+        // Change working directory if set --
+        // Set environment variables --
+        // Redirect stdout/stderr if set
+        // Loop until unit is started or number of restarts reached
+        // Start the unit with given command line
+        // Wait until starttime is reached
+        // Check if unit is still alive
+
+        // Unit command
+        let mut command = Command::new(&self.config.cmd);
+
+        // Change Working Directory
+        if let Some(dir) = &self.config.workingdir {
+            command.current_dir(&dir);
+        }
+
+        // Redirect stdout
+        match &self.config.stdout {
+            Some(stdout) => {
+                let raw = std::fs::OpenOptions::new()
+                    .read(false)
+                    .write(true)
+                    .create(true)
+                    .truncate(false)
+                    .open(stdout)
+                    .unwrap()
+                    .into_raw_fd();
+
+                let io = unsafe { std::process::Stdio::from_raw_fd(raw) };
+                command.stdout(io);
+            },
+            _ => (),
+        };
+
+        // Redirect stderr
+        match &self.config.stderr {
+            Some(stderr) => {
+                let raw = std::fs::OpenOptions::new()
+                    .read(false)
+                    .write(true)
+                    .create(true)
+                    .truncate(false)
+                    .open(stderr)
+                    .unwrap()
+                    .into_raw_fd();
+                let io = unsafe { std::process::Stdio::from_raw_fd(raw) };
+                command.stderr(io);
+            },
+            _ => (),
+        };
+
+        // Set Environment Variables
         let env = Unit::build_env(&self.config);
+        command.envs(&env);
+
+        // Set arguments;
         let args = match &self.config.args {
             Some(arguments) => arguments.to_owned(),
             None => vec![],
         };
+        command.args(&args);
 
-        let child = Command::new(&self.config.cmd)
-            .args(&args)
-            .envs(&env)
-            .spawn()
+        let child = command.spawn()
             .expect("Command failed to execute");
-
         self.child = Some(child);
     }
 
