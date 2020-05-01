@@ -1,153 +1,53 @@
-use serde_derive::Deserialize;
-use std::collections::HashMap;
-use std::env;
-use std::fs::File;
-use std::io::prelude::*;
-use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::path::Path;
-use std::process::{Child, Command};
-use std::{thread, time};
+//use std::ffi::CStr;
 
-#[derive(Deserialize, Debug)]
-pub struct Config {
-    cmd: String,
-    description: Option<String>,
-    args: Option<Vec<String>>,
-    numprocs: Option<u8>,
-    workingdir: Option<String>,
-    autostart: Option<bool>,
-    autorestart: Option<String>,
-    exitcodes: Option<Vec<u8>>,
-    startretries: Option<u8>,
-    starttime: Option<u8>,
-    stopsignal: Option<String>,
-    stoptime: Option<u8>,
-    stdout: Option<String>,
-    stderr: Option<String>,
-    env: Option<Vec<String>>,
-}
+mod unit;
+mod master;
 
-struct Unit {
-    //started_at: SystemTime,
-    //status: UnitStatus,
-    child: Option<Child>,
-    config: Config,
-    path: &'static Path,
-}
+//fn load_units_in_folder(path: &Path) {
+//    // Read every unit file present inside the directory at `path'
+//    if let Ok(dir) = std::fs::read_dir(path) {
+//        for entry in dir {
+//            let file = entry.unwrap();
+//            // Read the content of the file and store it inside a String
+//            let content = {
+//                let data = std::fs::read(file.path()).unwrap_or_default();
+//                String::from_utf8(data).unwrap_or_default()
+//            };
+//
+//            // Print the path and the content of the unit file
+//            println!("{}:", &file.path().to_str().unwrap());
+//            println!("{}", &content);
+//        }
+//    }
+//}
 
-impl Unit {
-    pub fn new(path: &'static Path) -> Unit {
-        Unit {
-            config: Unit::get_config(path).unwrap(),
-            path,
-            child: None,
-        }
-    }
-
-    fn get_config(path: &Path) -> Result<Config, toml::de::Error> {
-        let mut file = File::open(path.to_str().unwrap_or_default()).expect("Unable to open");
-        let mut contents = String::new();
-
-        file.read_to_string(&mut contents)
-            .expect("Could not parse config");
-        match toml::from_str::<Config>(&contents) {
-            Ok(n) => Ok(n),
-            Err(n) => Err(n),
-        }
-    }
-
-    fn build_env(config: &Config) -> HashMap<String, String> {
-        let mut env = env::vars().collect::<HashMap<String, String>>();
-
-        let conf_env = config.env.as_ref();
-
-        for val in conf_env.unwrap() {
-            let (first, last) = val.split_at(val.trim().find('=').unwrap_or(val.len()));
-            env.insert(
-                first.to_string(),
-                last.get(1..).unwrap_or_default().to_string(),
-            );
-        }
-        env
-    }
-
-    pub fn start(&mut self) {
-        // Change working directory if set --
-        // Set environment variables --
-        // Redirect stdout/stderr if set
-        // Loop until unit is started or number of restarts reached
-        // Start the unit with given command line
-        // Wait until starttime is reached
-        // Check if unit is still alive
-
-        // Unit command
-        let mut command = Command::new(&self.config.cmd);
-
-        // Change Working Directory
-        if let Some(dir) = &self.config.workingdir {
-            command.current_dir(&dir);
-        }
-
-        // Redirect stdout
-        match &self.config.stdout {
-            Some(stdout) => {
-                let raw = std::fs::OpenOptions::new()
-                    .read(false)
-                    .write(true)
-                    .create(true)
-                    .truncate(false)
-                    .open(stdout)
-                    .unwrap()
-                    .into_raw_fd();
-
-                let io = unsafe { std::process::Stdio::from_raw_fd(raw) };
-                command.stdout(io);
-            },
-            _ => (),
-        };
-
-        // Redirect stderr
-        match &self.config.stderr {
-            Some(stderr) => {
-                let raw = std::fs::OpenOptions::new()
-                    .read(false)
-                    .write(true)
-                    .create(true)
-                    .truncate(false)
-                    .open(stderr)
-                    .unwrap()
-                    .into_raw_fd();
-                let io = unsafe { std::process::Stdio::from_raw_fd(raw) };
-                command.stderr(io);
-            },
-            _ => (),
-        };
-
-        // Set Environment Variables
-        let env = Unit::build_env(&self.config);
-        command.envs(&env);
-
-        // Set arguments;
-        let args = match &self.config.args {
-            Some(arguments) => arguments.to_owned(),
-            None => vec![],
-        };
-        command.args(&args);
-
-        let child = command.spawn()
-            .expect("Command failed to execute");
-        self.child = Some(child);
-    }
-
-    pub fn stop(&mut self) {
-        self.child.as_mut().unwrap().kill().expect("Command was not running");
-    }
+extern "C" {
+    pub fn ctime(time: *const libc::time_t) -> *mut libc::c_char;
 }
 
 fn main() -> std::io::Result<()> {
-    let path = Path::new("./nginx.service");
-    let mut unit: Unit = Unit::new(path);
-    unit.start();
-    unit.stop();
+//    let path = Path::new("./nginx.service");
+//    let mut unit: unit::Unit = unit::Unit::new(path);
+//
+//    unit.start();
+//
+//    let mut now: libc::time_t = 0;
+//    unsafe { libc::time(&mut now); };
+//
+//    let local_time = {
+//        let time_now = unsafe { ctime(&now) };
+//        let local_time = unsafe { CStr::from_ptr(time_now) }.to_str().unwrap();
+//
+//        local_time.replace("\n", "")
+//    };
+//
+//    let elapsed = unit.started_at.duration_since(unit.started_at).unwrap();
+//
+//    println!("Active: active (running) since {}; {:?}", local_time, elapsed);
+
+    let mut master = master::Master::new();
+    master.load_units_in_folder(Path::new("./units"));
+
     Ok(())
 }
