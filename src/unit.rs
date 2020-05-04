@@ -12,7 +12,7 @@ use std::process::{Child, Command};
 use std::path::Path;
 
 /// Configuration of a unit created from a TOML file
-#[derive(Deserialize, Debug)]
+#[derive(Deserialize, Debug, Clone)]
 pub struct Config {
     cmd: String,
     description: Option<String>,
@@ -38,6 +38,14 @@ pub enum ConfigError {
 }
 
 type ConfigResult<T> = Result<T, ConfigError>;
+
+#[derive(Debug)]
+pub enum UnitError {
+    AlreadyRunning,
+    AlreadyStopped,
+}
+
+pub type UnitResult<T> = Result<T, UnitError>;
 
 impl Config {
     /// Create a Config from a TOML file
@@ -99,7 +107,7 @@ impl Unit {
     }
 
     /// Start the unit
-    pub fn start(&mut self) {
+    pub fn start(&mut self) -> UnitResult<()> {
         // Change working directory if set --
         // Set environment variables --
         // Redirect stdout/stderr if set --
@@ -107,6 +115,12 @@ impl Unit {
         // Start the unit with given command line --
         // Wait until starttime is reached
         // Check if unit is still alive
+
+        if self.child.is_some() {
+            return Err(UnitError::AlreadyRunning);
+        }
+
+        // TODO: Set UMASK
 
         // Command to run
         let mut command = Command::new(&self.config.cmd);
@@ -170,6 +184,8 @@ impl Unit {
             .expect("Command failed to execute");
 
         self.child = Some(child);
+
+        Ok(())
     }
 
     /// Stop the unit
