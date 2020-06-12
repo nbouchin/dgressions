@@ -8,8 +8,8 @@ use std::env;
 use std::fs::File;
 use std::io::prelude::*;
 use std::os::unix::io::{FromRawFd, IntoRawFd};
-use std::process::{Child, Command};
 use std::path::Path;
+use std::process::{Child, Command};
 
 /// Configuration of a unit created from a TOML file
 #[derive(Deserialize, Debug, Clone)]
@@ -43,6 +43,8 @@ type ConfigResult<T> = Result<T, ConfigError>;
 pub enum UnitError {
     AlreadyRunning,
     AlreadyStopped,
+    DoesNotExist,
+    Config(ConfigError),
 }
 
 pub type UnitResult<T> = Result<T, UnitError>;
@@ -53,8 +55,9 @@ impl Config {
         let mut file = File::open(path.to_str().unwrap_or_default()).expect("Unable to open");
         let mut contents = String::new();
 
-        file.read_to_string(&mut contents)
-            .expect("Could not parse config");
+        if let Err(e) = file.read_to_string(&mut contents) {
+            return Err(ConfigError::Io(e));
+        }
 
         match toml::from_str::<Config>(&contents) {
             Ok(n) => Ok(n),
@@ -68,7 +71,7 @@ pub struct Unit {
     /// The time since the process is running
     pub started_at: std::time::SystemTime,
     /// Contains the running child process
-    child: Option<Child>,
+    pub child: Option<Child>,
     /// Configuration populated from TOML configuration file
     config: Config,
     /// Unit's configuration file's path
@@ -77,12 +80,15 @@ pub struct Unit {
 
 impl Unit {
     /// Create a unit from a configuration file
-    pub fn new(path: &Path) -> Unit {
-        Unit {
-            started_at: std::time::SystemTime::UNIX_EPOCH,
-            config: Config::from_file(path).unwrap(),
-            path: Box::from(path),
-            child: None,
+    pub fn new(path: &Path) -> Result<Unit, UnitError> {
+        match Config::from_file(path) {
+            Ok(config) => Ok(Unit {
+                started_at: std::time::SystemTime::UNIX_EPOCH,
+                config,
+                path: Box::from(path),
+                child: None,
+            }),
+            Err(e) => Err(UnitError::Config(e)),
         }
     }
 
@@ -144,7 +150,7 @@ impl Unit {
 
                 let io = unsafe { std::process::Stdio::from_raw_fd(raw) };
                 command.stdout(io);
-            },
+            }
             _ => (),
         };
 
@@ -161,7 +167,7 @@ impl Unit {
                     .into_raw_fd();
                 let io = unsafe { std::process::Stdio::from_raw_fd(raw) };
                 command.stderr(io);
-            },
+            }
             _ => (),
         };
 
@@ -180,8 +186,7 @@ impl Unit {
         self.started_at = std::time::SystemTime::now();
 
         // Run the unit
-        let child = command.spawn()
-            .expect("Command failed to execute");
+        let child = command.spawn().expect("Command failed to execute");
 
         self.child = Some(child);
 
@@ -195,7 +200,7 @@ impl Unit {
                 if let Err(_) = c.kill() {
                     println!("Command was not running.");
                 }
-            },
+            }
             None => (),
         };
     }
@@ -204,6 +209,8 @@ impl Unit {
     pub fn restart(&mut self) {
         unimplemented!();
     }
+
+    pub fn is_alive(&self) -> bool {
+        true
+    }
 }
-
-

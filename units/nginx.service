@@ -14,7 +14,7 @@ stoptime = 10
 stdout = "/tmp/nginx.stdout"
 stderr = "/tmp/nginx.stderr"
 env = [
-	"STARTED_BY = taskmaster",
-	"ANSWER = 42",
+	"STARTED_BY=taskmaster",
+	"ANSWER=42",
 	"TEST"
 ]
