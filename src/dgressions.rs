@@ -160,14 +160,15 @@ impl Master {
     }
 
     pub fn restart_unit(unit: &mut UnitInfo) {
-
         match unit.unit.child.as_mut().unwrap().try_wait() {
             Ok(exit) => {
                 if let Some(exit_code) = exit {
                     // Process is not running
                 }
-            },
-            Err(e) => { error!("{:?}", e); }
+            }
+            Err(e) => {
+                error!("{:?}", e);
+            }
         };
     }
 

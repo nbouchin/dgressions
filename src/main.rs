@@ -2,6 +2,7 @@ extern crate env_logger;
 #[macro_use]
 extern crate log;
 
+use std::cell::RefCell;
 use std::path::Path;
 //use std::ffi::CStr;
 
@@ -30,6 +31,38 @@ extern "C" {
     pub fn ctime(time: *const libc::time_t) -> *mut libc::c_char;
 }
 
+thread_local!(
+    // Global thread-local variable that is set to true when a SIGHUP has been caught
+    static SIGHUP_CAUGHT: RefCell<bool> = RefCell::new(false)
+);
+
+fn handler_sighup(_signum: i32, _siginfo: *mut libc::siginfo_t, _arg: *mut std::ffi::c_void) {
+    SIGHUP_CAUGHT.with(|val| *val.borrow_mut() = true);
+}
+
+fn catch_sighup() {
+    let mut set = unsafe { std::mem::zeroed::<libc::sigset_t>() };
+    unsafe {
+        libc::sigemptyset(&mut set);
+        libc::sigaddset(&mut set, libc::SIGHUP);
+    };
+
+    let sa = libc::sigaction {
+        sa_sigaction: handler_sighup as usize,
+        sa_mask: set,
+        sa_flags: libc::SA_SIGINFO,
+        sa_restorer: None,
+    };
+
+    unsafe {
+        libc::sigaction(
+            libc::SIGHUP,
+            &sa,
+            std::ptr::null_mut() as *mut libc::sigaction,
+        );
+    };
+}
+
 fn main() -> std::io::Result<()> {
     env_logger::init();
     //    let path = Path::new("./nginx.service");
@@ -56,7 +89,17 @@ fn main() -> std::io::Result<()> {
     debug!("Starting all units");
     dgressions::Master::start_all_units(&mut units);
 
+    catch_sighup();
+
     while dgressions::Master::units_alive(&mut units) {
+        let triggered = SIGHUP_CAUGHT.with(|triggered| *triggered.borrow());
+
+        if triggered {
+            SIGHUP_CAUGHT.with(|val| *val.borrow_mut() = false);
+
+            // Reload Configuration File
+        }
+
         dgressions::Master::update_units(&mut units);
     }
 
