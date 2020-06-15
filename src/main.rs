@@ -4,28 +4,9 @@ extern crate log;
 
 use std::cell::RefCell;
 use std::path::Path;
-//use std::ffi::CStr;
 
 mod dgressions;
 mod unit;
-
-//fn load_units_in_folder(path: &Path) {
-//    // Read every unit file present inside the directory at `path'
-//    if let Ok(dir) = std::fs::read_dir(path) {
-//        for entry in dir {
-//            let file = entry.unwrap();
-//            // Read the content of the file and store it inside a String
-//            let content = {
-//                let data = std::fs::read(file.path()).unwrap_or_default();
-//                String::from_utf8(data).unwrap_or_default()
-//            };
-//
-//            // Print the path and the content of the unit file
-//            println!("{}:", &file.path().to_str().unwrap());
-//            println!("{}", &content);
-//        }
-//    }
-//}
 
 extern "C" {
     pub fn ctime(time: *const libc::time_t) -> *mut libc::c_char;
