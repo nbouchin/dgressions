@@ -4,13 +4,9 @@ extern crate log;
 
 use std::cell::RefCell;
 use std::path::Path;
+use taskmaster::Taskmaster;
 
-mod dgressions;
-mod unit;
-
-extern "C" {
-    pub fn ctime(time: *const libc::time_t) -> *mut libc::c_char;
-}
+mod taskmaster;
 
 thread_local!(
     // Global thread-local variable that is set to true when a SIGHUP has been caught
@@ -22,6 +18,8 @@ fn handler_sighup(_signum: i32, _siginfo: *mut libc::siginfo_t, _arg: *mut std::
 }
 
 fn catch_sighup() {
+    debug!("Setting up signal catching for SIGHUP");
+
     let mut set = unsafe { std::mem::zeroed::<libc::sigset_t>() };
     unsafe {
         libc::sigemptyset(&mut set);
@@ -42,37 +40,24 @@ fn catch_sighup() {
             std::ptr::null_mut() as *mut libc::sigaction,
         );
     };
+
+    debug!("Process is now catching SIGHUP");
 }
 
 fn main() -> std::io::Result<()> {
     env_logger::init();
-    //    let path = Path::new("./nginx.service");
-    //    let mut unit: unit::Unit = unit::Unit::new(path);
-    //
-    //    unit.start();
-    //
-    //    let mut now: libc::time_t = 0;
-    //    unsafe { libc::time(&mut now); };
-    //
-    //    let local_time = {
-    //        let time_now = unsafe { ctime(&now) };
-    //        let local_time = unsafe { CStr::from_ptr(time_now) }.to_str().unwrap();
-    //
-    //        local_time.replace("\n", "")
-    //    };
-    //
-    //    let elapsed = unit.started_at.duration_since(unit.started_at).unwrap();
-    //
-    //    println!("Active: active (running) since {}; {:?}", local_time, elapsed);
 
-    let mut units = dgressions::Master::load_units_in_folder(Path::new("./units"));
+    let mut units = Taskmaster::load_units_in_folder(Path::new("./units"));
+
+    println!("taskmaster v0.1.0");
+    println!("By nbouchin, oyagci");
 
     debug!("Starting all units");
-    dgressions::Master::start_all_units(&mut units);
+    Taskmaster::start_all_units(&mut units);
 
     catch_sighup();
 
-    while dgressions::Master::units_alive(&mut units) {
+    while Taskmaster::units_alive(&mut units) {
         let triggered = SIGHUP_CAUGHT.with(|triggered| *triggered.borrow());
 
         if triggered {
@@ -81,7 +66,7 @@ fn main() -> std::io::Result<()> {
             // Reload Configuration File
         }
 
-        dgressions::Master::update_units(&mut units);
+        Taskmaster::update_units(&mut units);
     }
 
     Ok(())

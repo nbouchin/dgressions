@@ -1,7 +1,6 @@
-//! Controls every unit
-#![allow(unused)]
+pub mod unit;
+pub mod config;
 
-use crate::unit;
 use std::collections::HashMap;
 use std::path::Path;
 use unit::UnitError;
@@ -25,10 +24,10 @@ impl UnitInfo {
 
 pub type UnitPool = HashMap<String, UnitInfo>;
 
-/// Controls every unit
-pub struct Master {}
+pub struct Taskmaster;
 
-impl Master {
+impl Taskmaster {
+
     /// Read every unit files inside a folder and start and manage them
     /// when needed.
     pub fn load_units_in_folder(path: &Path) -> UnitPool {
@@ -40,8 +39,6 @@ impl Master {
                 match entry {
                     Ok(file) => {
                         if file.file_type().unwrap().is_file() {
-                            let osname = file.file_name();
-                            let filename = osname.to_str().unwrap();
                             let path = file.path();
 
                             // Isolate the filename in the path. This will be the unit's internal name
@@ -109,7 +106,7 @@ impl Master {
 
             // Restart the unit if it has unexpectedly stopped
             if has_exited && unit.1.is_running {
-                Master::restart_unit(&mut unit.1);
+                Taskmaster::restart_unit(&mut unit.1);
             }
         }
     }
@@ -133,7 +130,7 @@ impl Master {
         unit.start()
     }
 
-    pub fn start_unit_by_name(&self, units: &mut UnitPool, name: &str) -> Result<(), UnitError> {
+    pub fn start_unit_by_name(units: &mut UnitPool, name: &str) -> Result<(), UnitError> {
         if !units.contains_key(name) {
             return Err(UnitError::DoesNotExist);
         }
@@ -141,7 +138,7 @@ impl Master {
         info!("Starting unit {}", name);
 
         match units.get_mut(name) {
-            Some(unit_info) => match Master::start_unit(&mut unit_info.unit) {
+            Some(unit_info) => match Taskmaster::start_unit(&mut unit_info.unit) {
                 Ok(_) => Ok(()),
                 err => err,
             },
@@ -150,12 +147,12 @@ impl Master {
     }
 
     /// Stop all running units
-    pub fn stop_all_units(&self) {
+    pub fn stop_all_units() {
         unimplemented!();
     }
 
     /// Stop a running unit
-    pub fn stop_unit(&self, name: &str) {
+    pub fn stop_unit(name: &str) {
         unimplemented!();
     }
 

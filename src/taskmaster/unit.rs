@@ -10,61 +10,17 @@ use std::io::prelude::*;
 use std::os::unix::io::{FromRawFd, IntoRawFd};
 use std::path::Path;
 use std::process::{Child, Command};
-
-/// Configuration of a unit created from a TOML file
-#[derive(Deserialize, Debug, Clone)]
-pub struct Config {
-    cmd: String,
-    description: Option<String>,
-    args: Option<Vec<String>>,
-    numprocs: Option<u8>,
-    workingdir: Option<String>,
-    autostart: Option<bool>,
-    autorestart: Option<String>,
-    exitcodes: Option<Vec<u8>>,
-    startretries: Option<u8>,
-    starttime: Option<u8>,
-    stopsignal: Option<String>,
-    stoptime: Option<u8>,
-    stdout: Option<String>,
-    stderr: Option<String>,
-    env: Option<Vec<String>>,
-}
-
-#[derive(Debug)]
-pub enum ConfigError {
-    Io(std::io::Error),
-    TOML(toml::de::Error),
-}
-
-type ConfigResult<T> = Result<T, ConfigError>;
+use super::config::{Config, ConfigError};
 
 #[derive(Debug)]
 pub enum UnitError {
     AlreadyRunning,
     AlreadyStopped,
     DoesNotExist,
-    Config(ConfigError),
+    ConfigError(ConfigError),
 }
 
 pub type UnitResult<T> = Result<T, UnitError>;
-
-impl Config {
-    /// Create a Config from a TOML file
-    pub fn from_file(path: &Path) -> ConfigResult<Config> {
-        let mut file = File::open(path.to_str().unwrap_or_default()).expect("Unable to open");
-        let mut contents = String::new();
-
-        if let Err(e) = file.read_to_string(&mut contents) {
-            return Err(ConfigError::Io(e));
-        }
-
-        match toml::from_str::<Config>(&contents) {
-            Ok(n) => Ok(n),
-            Err(n) => Err(ConfigError::TOML(n)),
-        }
-    }
-}
 
 /// Information about the unit
 pub struct Unit {
@@ -88,7 +44,7 @@ impl Unit {
                 path: Box::from(path),
                 child: None,
             }),
-            Err(e) => Err(UnitError::Config(e)),
+            Err(e) => Err(UnitError::ConfigError(e)),
         }
     }
 
