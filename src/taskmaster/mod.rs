@@ -4,9 +4,10 @@ pub mod config;
 use std::collections::HashMap;
 use std::path::Path;
 use unit::UnitError;
+use std::cell::RefCell;
 
 pub struct UnitInfo {
-    pub unit: unit::Unit,
+    pub unit: RefCell<unit::Unit>,
     restarts: u32,
     is_running: bool,
 }
@@ -14,7 +15,7 @@ pub struct UnitInfo {
 impl UnitInfo {
     pub fn new(unit: unit::Unit) -> UnitInfo {
         UnitInfo {
-            unit,
+            unit: RefCell::new(unit),
             /// Current number of restarts
             restarts: 0,
             is_running: false,
@@ -24,14 +25,22 @@ impl UnitInfo {
 
 pub type UnitPool = HashMap<String, UnitInfo>;
 
-pub struct Taskmaster;
+pub struct Taskmaster {
+    units: UnitPool
+}
 
 impl Taskmaster {
 
+    pub fn new() -> Taskmaster {
+        Taskmaster {
+            units: UnitPool::new()
+        }
+    }
+
     /// Read every unit files inside a folder and start and manage them
     /// when needed.
-    pub fn load_units_in_folder(path: &Path) -> UnitPool {
-        let mut units = UnitPool::new();
+    pub fn load_units_in_folder(&mut self, path: &Path) -> usize {
+        let mut number_of_units = 0;
 
         // Read every unit file present inside the directory at `path'
         if let Ok(dir) = std::fs::read_dir(path) {
@@ -56,7 +65,8 @@ impl Taskmaster {
                                     info!("Loading unit {}", &path.to_str().unwrap());
                                     match unit::Unit::new(&path) {
                                         Ok(unit) => {
-                                            units.insert(filename, UnitInfo::new(unit));
+                                            self.units.insert(filename, UnitInfo::new(unit));
+                                            number_of_units += 1;
                                         }
                                         Err(e) => {
                                             warn!(
@@ -77,16 +87,16 @@ impl Taskmaster {
             }
         }
 
-        units
+        number_of_units
     }
 
     /// Cycle through units and update the state of all the units
-    pub fn update_units(units: &mut UnitPool) {
-        for mut unit in units.iter_mut() {
+    pub fn update_units(&mut self) {
+        for mut unit in self.units.iter_mut() {
             let mut has_exited = false;
 
             debug!("Updating unit {}", &unit.0);
-            match unit.1.unit.child.as_mut().unwrap().try_wait() {
+            match unit.1.unit.borrow_mut().child.as_mut().unwrap().try_wait() {
                 Ok(exit) => {
                     match exit {
                         Some(exit_status) => {
@@ -111,9 +121,9 @@ impl Taskmaster {
         }
     }
 
-    pub fn start_all_units(units: &mut UnitPool) {
-        for (name, info) in units.iter_mut() {
-            match info.unit.start() {
+    pub fn start_all_units(&mut self) {
+        for (name, info) in self.units.iter_mut() {
+            match info.unit.borrow_mut().start() {
                 Ok(_) => {
                     debug!("{}: started", name);
                     info.is_running = true;
@@ -138,7 +148,7 @@ impl Taskmaster {
         info!("Starting unit {}", name);
 
         match units.get_mut(name) {
-            Some(unit_info) => match Taskmaster::start_unit(&mut unit_info.unit) {
+            Some(unit_info) => match Taskmaster::start_unit(&mut *unit_info.unit.borrow_mut()) {
                 Ok(_) => Ok(()),
                 err => err,
             },
@@ -157,7 +167,7 @@ impl Taskmaster {
     }
 
     pub fn restart_unit(unit: &mut UnitInfo) {
-        match unit.unit.child.as_mut().unwrap().try_wait() {
+        match unit.unit.borrow_mut().child.as_mut().unwrap().try_wait() {
             Ok(exit) => {
                 if let Some(exit_code) = exit {
                     // Process is not running
@@ -169,9 +179,9 @@ impl Taskmaster {
         };
     }
 
-    pub fn units_alive(units: &UnitPool) -> bool {
-        for u in units.iter() {
-            if u.1.unit.is_alive() {
+    pub fn units_alive(&self) -> bool {
+        for u in self.units.iter() {
+            if u.1.unit.borrow().is_alive() {
                 return true;
             }
         }

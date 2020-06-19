@@ -1,0 +1,15 @@
+cmd = "/home/oyagci/Projects/dgressions/services/loop/loop"
+args = []
+numprocs = 1
+umask = "022"
+workingdir = "/home/oyagci/Projects/dgressions/services/"
+autostart = true
+autorestart = "unexpected"
+exitcodes = [ 0, 2 ]
+startretries = 3
+starttime = 5
+stopsignal = "TERM"
+stoptime = 10
+stdout = "./loop.stdout"
+stderr = "./loop.stderr"
+env = []

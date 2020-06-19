@@ -47,17 +47,19 @@ fn catch_sighup() {
 fn main() -> std::io::Result<()> {
     env_logger::init();
 
-    let mut units = Taskmaster::load_units_in_folder(Path::new("./units"));
+    let mut tm = Taskmaster::new();
+
+    tm.load_units_in_folder(Path::new("./units"));
 
     println!("taskmaster v0.1.0");
     println!("By nbouchin, oyagci");
 
     debug!("Starting all units");
-    Taskmaster::start_all_units(&mut units);
+    tm.start_all_units();
 
     catch_sighup();
 
-    while Taskmaster::units_alive(&mut units) {
+    while tm.units_alive() {
         let triggered = SIGHUP_CAUGHT.with(|triggered| *triggered.borrow());
 
         if triggered {
@@ -66,7 +68,7 @@ fn main() -> std::io::Result<()> {
             // Reload Configuration File
         }
 
-        Taskmaster::update_units(&mut units);
+        tm.update_units();
     }
 
     Ok(())
